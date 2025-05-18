@@ -1,7 +1,9 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 
@@ -25,9 +27,25 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @Post('profile')
+  @Get('profile')
   @ApiOperation({ summary: 'Obter perfil do usuário autenticado' })
-  async getProfile() {
-    return { message: 'Acesso autorizado' };
+  async getProfile(@Request() req) {
+    return req.user;
+  }
+
+  @Post('request-password-reset')
+  @ApiOperation({ summary: 'Solicitar redefinição de senha' })
+  @ApiResponse({ status: 200, description: 'E-mail de redefinição enviado' })
+  async requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+    await this.authService.requestPasswordReset(dto.email);
+    return { message: 'E-mail de redefinição enviado' };
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Redefinir senha' })
+  @ApiResponse({ status: 200, description: 'Senha redefinida com sucesso' })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.authService.resetPassword(dto.token, dto.newPassword);
+    return { message: 'Senha redefinida com sucesso' };
   }
 }
