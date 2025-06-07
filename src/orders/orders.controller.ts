@@ -1,15 +1,19 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards, ParseIntPipe, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards, ParseIntPipe, Request, Inject } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AdminGuard } from '../auth/admin.guard';
+import Stripe from 'stripe';
 
 @ApiTags('orders')
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    @Inject('STRIPE_SERVICE') private readonly stripeService: Stripe,
+  ) {}
 
   @Post()
   @ApiBearerAuth()
@@ -18,6 +22,38 @@ export class OrdersController {
   @ApiResponse({ status: 201, description: 'Pedido criado com sucesso' })
   async create(@Request() req, @Body() createOrderDto: CreateOrderDto) {
     return this.ordersService.create(req.user.id, createOrderDto);
+  }
+
+  @Post('checkout')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Criar sessão de checkout' })
+  @ApiResponse({ status: 201, description: 'Sessão de checkout criada com sucesso' })
+  async createCheckoutSession(@Request() req, @Body() { items }: { items: { productId: number; quantity: number }[] }) {
+    const lineItems = await Promise.all(
+      items.map(async (item) => {
+        const product = await this.ordersService['prisma'].product.findUnique({ where: { id: item.productId } });
+        if (!product) {
+          throw new Error(`Produto com ID ${item.productId} não encontrado`);
+        }
+        return {
+          price_data: {
+            currency: 'usd',
+            product_data: { name: product.name },
+            unit_amount: Math.round(product.price * 100), // Convert to cents
+          },
+          quantity: item.quantity,
+        };
+      }),
+    );
+    const session = await this.stripeService.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: lineItems,
+      mode: 'payment',
+      success_url: 'http://localhost:3000/success',
+      cancel_url: 'http://localhost:3000/cancel',
+    });
+    return { id: session.id };
   }
 
   @Get()

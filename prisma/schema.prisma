@@ -29,14 +29,22 @@ model PasswordResetToken {
 }
 
 model Product {
-  id          Int          @id @default(autoincrement())
-  name        String
-  description String?
-  price       Float
-  stock       Int
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  orderItems  OrderItem[]
+  id            Int          @id @default(autoincrement())
+  name          String
+  description   String?
+  price         Float
+  stock         Int
+  imageUrl      String?
+  stripeProductId String?
+  stripePriceId   String?
+  size          String?      // Tamanho (ex.: "P, M, G" ou "38, 39, 40")
+  material      String?      // Material (ex.: "Couro, Camurça")
+  type          String?      // Tipo (ex.: "Casual, Esportivo")
+  about         String?      // Sobre o produto (detalhes adicionais)
+  warranty      String?      // Garantia (ex.: "1 ano contra defeitos")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  orderItems    OrderItem[]
 }
 
 model Order {

@@ -4,6 +4,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { AdminGuard } from '../auth/admin.guard';
 
 @ApiTags('products')
 @Controller('products')
@@ -12,8 +13,8 @@ export class ProductsController {
 
   @Post()
   @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
-  @ApiOperation({ summary: 'Criar um novo produto' })
+  @UseGuards(AuthGuard('jwt'), AdminGuard)
+  @ApiOperation({ summary: 'Criar um novo produto (admin)' })
   @ApiResponse({ status: 201, description: 'Produto criado com sucesso' })
   async create(@Body() createProductDto: CreateProductDto) {
     return this.productsService.create(createProductDto);
@@ -52,5 +53,14 @@ export class ProductsController {
   @ApiResponse({ status: 404, description: 'Produto não encontrado' })
   async remove(@Param('id', ParseIntPipe) id: number) {
     return this.productsService.remove(id);
+  }
+
+  @Post('sync-stripe')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), AdminGuard)
+  @ApiOperation({ summary: 'Sincronizar produtos com o Stripe (admin)' })
+  @ApiResponse({ status: 201, description: 'Produtos sincronizados com o Stripe com sucesso' })
+  async syncWithStripe() {
+    return this.productsService.syncWithStripe();
   }
 }
